@@ -109,7 +109,7 @@ def processTwitter(publish, cfgTwitter):
             palala.cache('twitter:%s:friends:sinceid' % cfgTwitter['userid'], '%s' % since_id)
 
         except:
-            palala.dumpException('exception during Timeline poll')
+            palala.utils.dumpException('exception during Timeline poll')
         
         time.sleep(60)
 

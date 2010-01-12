@@ -25,14 +25,11 @@ from multiprocessing import Process, Queue, current_process, freeze_support
 
 from optparse import OptionParser
 
-import sleekxmpp
-from sleekxmpp.xmlstream.matcher.xpath import MatchXPath
-from sleekxmpp.xmlstream.handler.callback import Callback
-
 import daemon
 import amqplib.client_0_8 as amqp
 import pytyrant
 
+import utils
 
 log       = None
 options   = None
@@ -45,92 +42,6 @@ _admins   = ( 'bear@xmppnews.com', 'bear@twit.im', 'bear@code-bear.com', 'bear42
 inbound   = Queue()
 
 
-def dumpException(msg):
-    """
-    Gather information on the current exception stack and log it
-    """
-    t, v, tb = sys.exc_info()
-    s        = '%s\n%s\n' % (msg, ''.join(traceback.format_exception(t, v, tb)))
-    if log is None:
-        print s
-    else:
-        log.exception(s)
-
-def tostring(xml, xmlns='', stringbuffer='', namespace_map={}, root=True, cdata=()):
-    newoutput = [stringbuffer]
-    itag = xml.tag.split('}', 1)[-1]
-    if '}' in xml.tag:
-        ixmlns = xml.tag.split('}', 1)[0][1:]
-    else:
-        ixmlns = ''
-    nsbuffer = ''
-    if xmlns != ixmlns and ixmlns != '':
-        if ixmlns in namespace_map:
-            if namespace_map[ixmlns] != '':
-                itag = "%s:%s" % (namespace_map[ixmlns], itag)
-        else:
-            nsbuffer = """ xmlns="%s\"""" % ixmlns
-    newoutput.append("<%s" % itag)
-    newoutput.append(nsbuffer)
-    for attrib in xml.attrib:
-        newoutput.append(""" %s="%s\"""" % (attrib, escXML(xml.attrib[attrib])))
-    if root:
-        for namespace in namespace_map:
-            newoutput.append(""" xmlns:%s="%s\"""" % (namespace_map[namespace], namespace))
-    if len(xml):
-        newoutput.append(">")
-        for child in xml.getchildren():
-            newoutput.append(tostring(child, ixmlns, namespace_map=namespace_map, root=False, cdata=cdata))
-        newoutput.append("</%s>" % (itag, ))
-    elif xml.text:
-        if itag in cdata:
-            newoutput.append("><![CDATA[%s]]></%s>" % (xml.text, itag))
-        else:
-            newoutput.append(">%s</%s>" % (escXML(xml.text), itag))
-    else:
-        newoutput.append(" />")
-    return ''.join(newoutput)
-
-def escXML(text, escape_quotes=False):
-    if type(text) != types.UnicodeType:
-        if type(text) == types.IntType:
-            s = str(text)
-        else:
-            s = text
-        s = list(unicode(s, 'utf-8', 'ignore'))
-    else:
-        s = list(text)
-
-    cc      = 0
-    matches = ('&', '<', '"', '>')
-
-    for c in s:
-        if c in matches:
-            if c == '&':
-                s[cc] = u'&amp;'
-            elif c == '<':
-                s[cc] = u'&lt;'
-            elif c == '>':
-                s[cc] = u'&gt;'
-            elif escape_quotes:
-                s[cc] = u'&quot;'
-        cc += 1
-    return ''.join(s)
-
-def handle_sigterm(signum, frame):
-    log.info('handling SIGTERM [%s]' % _daemon.pidfile)
-
-    if _daemon.pidfile is not None:
-        try:
-            os.remove(_daemon.pidfile)
-        except (KeyboardInterrupt, SystemExit):
-            dumpException('KI, SE trapped during PID removal')
-            raise
-        except Exception:
-            dumpException('Exception trapped during PID removal')
-
-    raise Exception('stopping')
-
 def cache(id, value=None):
     if value is None:
         try:
@@ -140,107 +51,6 @@ def cache(id, value=None):
         return result
     else:
         _tyrant[id] = value
-
-class xmppService(sleekxmpp.ClientXMPP):
-    def __init__(self, jid, password, basename=None, ssl=False):
-
-        self.plugin_config = {}
-
-        self.jid      = jid
-        self.password = password
-
-        if basename is None:
-            self.basename = self.jid
-        else:
-            self.basename = basename
-
-        self._priority = 100
-        self.botActive = False
-
-        sleekxmpp.ClientXMPP.__init__(self, self.jid, self.password, ssl, self.plugin_config, {})
-
-        self.registerPlugin('xep_0092', { 'name': 'XMPP Daemon', 'version': __version__ })
-        self.registerPlugin('xep_0004')
-        self.registerPlugin('xep_0030')
-        self.registerPlugin('xep_0060', {})
-        self.registerPlugin('xep_0045', {})
-
-        self.site_values    = []
-        self.auto_authorize = True
-        self.auto_subscribe = True
-
-        self.pubsub = self.plugin['xep_0060']
-        self.muc    = self.plugin['xep_0045']
-
-        # [(room, nick, password)]
-        self.roomlist = []
-
-        self.lasterror = ''
-
-        self.add_event_handler("session_start",     self.on_start,   threaded=True)
-        self.add_event_handler("message",           self.on_message, threaded=True)
-        self.add_event_handler("groupchat_message", self.on_muc,     threaded=True)
-
-        self.add_handler("<iq type='error' />", self.handleError)
-
-        self.registerHandler(Callback("payload", MatchXPath("{jabber:client}message/{http://jabber.org/protocol/pubsub#event}event"), self.on_payload, thread=True))
-
-        self.rootnode = 'pubsub.%s' % self.getjidbare(jid).split('@')[1]
-
-    def on_start(self, event):
-        self.getRoster()
-        self.ping()
-        self.ping(self.rootnode)
-
-        self.botActive = True
-
-        for room in self.roomlist:
-            self.joinRoom(room[0], room[1], room[2])
-
-    def on_message(self, event):
-        try:
-            # source, type, exchange, key, body
-            publish('xmpp', 'im', 'inbound', 'xmpp.%s/%s' % (event['jid'], event['resource']), event['message'])
-        except:
-            dumpException('exception during on_message callback')
-
-    def on_muc(self, event):
-        try:
-            publish('xmpp', 'muc', 'inbound', '%s/%s: %s' % (event['room'], event['name'], event['message']))
-        except:
-            dumpException('exception during on_muc')
-
-    def on_payload(self, event):
-        try:
-            publish('xmpp', 'payload', 'inbound', 'xmpp.payload', tostring(event.xml, namespace_map={}, cdata=('encoded',)))
-        except:
-            dumpException('exception during on_payload')
-
-    def handleError(self, xml):
-        error          = xml.find('{jabber:client}error')
-        self.lasterror = error.getchildren()[0].tag.split('}')[-1]
-
-    def ping(self, jid=None, priority=None):
-
-        if priority is None:
-            p = self._priority
-        else:
-            p = priority
-
-        if jid is None:
-            self.sendPresence(ppriority=p)
-        else:
-            self.sendPresence(pto=jid, ppriority=p)
-
-    def joinRoom(self, room, nick=None, password=None):
-        if nick is not None:
-            nickname = nick
-        else:
-            nickname = self.basename
-
-        log.info('joining %s' % room)
-
-        self.muc.joinMUC(room, nickname, maxhistory="0", password=password)
 
 class rmqService():
     """
@@ -295,7 +105,7 @@ class rmqService():
         except:
             self.channel    = None
             self.connection = None
-            dumpException('error during RMQ setup')
+            utils.dumpException('error during RMQ setup')
 
     def stop(self):
         self.channel.close()
@@ -308,7 +118,7 @@ class rmqService():
                 self.post('***ping***', 'inbound', exchange)
             except:
                 result = False
-                dumpException('error during rmq sanity check')
+                utils.dumpException('error during rmq sanity check')
         return result
 
     def post(self, data, key, exchange):
@@ -491,7 +301,7 @@ def init(basename, configDefaults=None, configItems=None):
         try:
             _daemon = daemon.Daemon(pidfile=options.pidfile, user=options.uid, sigterm=handle_sigterm, log=log.fileHandler)
         except:
-            dumpException('exception setting up daemon')
+            utils.dumpException('exception setting up daemon')
             sys.exit(1)
 
         log.info('forking daemon - pidfile is %s' % options.pidfile)
@@ -520,7 +330,7 @@ def rmqCallback(msg):
             inbound.put(('rmq', 'post', msg.delivery_info['exchange'], msg.delivery_info['routing_key'], msg.body))
             # push('rmq', 'post', msg.delivery_info['exchange'], msg.delivery_info['routing_key'], msg.body)
         except:
-            dumpException('error during rmq callback')
+            utils.dumpException('error during rmq callback')
     finally:
         msg.channel.basic_ack(msg.delivery_tag)
 
@@ -559,6 +369,6 @@ def start(eventHandler):
             log.error('RMQ Environment is not setup as expected')
             result = False
     except:
-        dumpException('Error during pull.start()')
+        utils.dumpException('Error during pull.start()')
 
     return result

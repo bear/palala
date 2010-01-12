@@ -24,6 +24,8 @@ from Queue import Empty
 from multiprocessing import Process, Queue, current_process, freeze_support
 
 import palala
+import palala.xmpp
+import palala.utils
 
 
 log        = None
@@ -98,7 +100,7 @@ def parseXMPPConfig(filename):
 # }
 
 def toAtom(data):
-    xmlTitle = palala.escXML(data['title']).encode('UTF-8')
+    xmlTitle = palala.utils.escXML(data['title']).encode('UTF-8')
 
     atom = ET.Element('{http://www.w3.org/2005/Atom}entry')
 
@@ -125,39 +127,46 @@ def toAtom(data):
     a_updated      = ET.Element('updated')
     a_updated.text = data['postDate']
 
-    a_generator      = ET.Element('generator')
-    a_generator.text = 'TwitBot'
+    a_source           = ET.Element('source')
+    a_source_title     = ET.Element('title', {'type': 'html'})
+    a_source_id        = ET.Element('id')
+    a_source_generator = ET.Element('generator')
 
-    a_source   = ET.Element('source')
-    a_srctitle = ET.Element('title', {'type': 'html'})
-    a_sourceid = ET.Element('id')
+    a_source_title.text     = xmlTitle
+    a_source_id.text        = data['uri']
+    a_source_generator.text = 'Palala %s' % __version__
 
-    a_sourceid.text = data['uri']
-    a_srctitle.text = xmlTitle
-
-    a_source.append(a_generator)
-    a_source.append(a_sourceid)
+    a_source.append(a_source_generator)
+    a_source.append(a_source_id)
+    a_source.append(a_source_title)
     a_source.append(a_updated)
-    a_source.append(a_srctitle)
 
     a_content      = ET.Element('content')
     a_content.text = data['content']
 
-    atom.append(a_title)
-    atom.append(a_link)
     atom.append(a_id)
-    atom.append(a_author)
-    atom.append(a_published)
+    atom.append(a_title)
     atom.append(a_updated)
+    atom.append(a_published)
+    atom.append(a_link)
+    atom.append(a_author)
     atom.append(a_source)
     atom.append(a_content)
 
-    log.debug('xml: %s' % palala.tostring(atom, namespace_map={}, cdata=('encoded',)))
+    log.debug('xml: %s' % palala.utils.tostring(atom, namespace_map={}, cdata=('encoded',)))
 
     return atom
 
-def twitterToAtom(body):
+def processTwitterPost(xmpp, body):
     jData = json.loads(body)
+
+    guid, atom = twitterToAtom(jData)
+    try:
+        xmpp.pubsub.setItem(xmpp.rootnode, 'test::atom', [(guid, atom),])
+    except:
+        palala.utils.dumpException('processXMPP pubsub send')
+
+def twitterToAtom(jData):
 
     s = jData['timestamp'][:19] # 2008-08-19T19:45:14Z or 2008-08-19T19:45:14.183Z
     t = time.strptime(s, '%Y-%m-%dT%H:%M:%S')
@@ -170,29 +179,28 @@ def twitterToAtom(body):
     postDate = createDate
     postID   = '%s' % jData['metadata']['post']['id']
     userID   = '%s' % jData['metadata']['post']['user']['id']
+    username = '%s' % jData['metadata']['post']['user']['screen_name']
+    fullname = username
 
     uData = palala.cache('twitter:user:id:%s' % userID)
-    
+
     if uData is not None:
         jUser = json.loads(uData)
-    
+
         fullname = jUser['name']
         username = jUser['screen_name']
-    else:
-        fullname = userID
-        username = fullname
 
     guid    = '%s-%s-%s' % (jData['source']['type'], userID, postID)
-    postURL = 'http://twitter.com/%s/status/%s' % (username, userID)
+    postURL = 'http://twitter.com/%s/status/%s' % (username, postID)
 
     atom = {}
 
     atom['guid']         = guid
     atom['referenceURL'] = postURL
+    atom['uri']          = postURL
     atom['createDate']   = createDate.strftime('%Y-%m-%dT%H:%M:%S+00:00')
     atom['postDate']     = postDate.strftime('%Y-%m-%dT%H:%M:%S+00:00')
-    atom['title']        = 'Twitter post from %s (%s)' % (username, postURL)
-    atom['uri']          = 'http://beta.twit.tv/feeds/%s' % guid
+    atom['title']        = 'Post from %s (via )' % username
     atom['fullname']     = fullname
     atom['username']     = username
     atom['content']      = jData['metadata']['post']['text']
@@ -205,7 +213,7 @@ def updateTwitterUser(body):
         user  = jData['metadata']['post']['user']
         palala.cache('twitter:user:id:%s' % user['id'], json.dumps(user))  
     except:
-        palala.dumpException('updateTwitterUser()')
+        palala.utils.dumpException('updateTwitterUser()')
 
 def eventHandler(event):
     source, type, exchange, key, body = event
@@ -218,7 +226,7 @@ def eventHandler(event):
                     log.info('pushing %s item to inbound queue' % key)
                     inbound.put((key, body))
     except:
-        palala.dumpException('rmq eventHandler')
+        palala.utils.dumpException('rmq eventHandler')
 
 def processInbound(publish, qInbound, qPubsub):
     log.info('processInbound start')
@@ -232,12 +240,12 @@ def processInbound(publish, qInbound, qPubsub):
                     #try:
                     #    updateTwitterUser(body)
                     #except:
-                    #    palala.dumpException('updateTwitterUser()')
+                    #    palala.utils.dumpException('updateTwitterUser()')
 
                     log.info('pushing to pubsub queue')
                     qPubsub.put((key, body))
                 except:
-                    palala.dumpException('processInbound loop')
+                    palala.utils.dumpException('processInbound loop')
         except Empty:
             time.sleep(1)
 
@@ -246,7 +254,7 @@ def processInbound(publish, qInbound, qPubsub):
 def processXMPP(publish, qPubsub, cfg):
     log.info('processXMPP start')
     try:
-        xmpp = palala.xmppService(cfg['jid'], cfg['password'])
+        xmpp = palala.xmpp.xmppService(cfg['jid'], cfg['password'], palala.publish)
     
         xmpp.connect()
         xmpp.process(threaded=True)
@@ -256,18 +264,14 @@ def processXMPP(publish, qPubsub, cfg):
                 item = qPubsub.get(False)
                 if item is not None:
                     try:
-                        key, body  = item
-                        guid, atom = twitterToAtom(body)
-                        try:
-                            xmpp.pubsub.setItem(xmpp.rootnode, 'test::atom', [(guid, atom),])
-                        except:
-                            palala.dumpException('processXMPP pubsub send')
+                        key, body = item
+                        processTwitterPost(xmpp, body)
                     except:
-                        palala.dumpException('twitterToAtom()')
+                        palala.utils.dumpException('twitterToAtom()')
             except Empty:
                 time.sleep(1)
     except:
-        palala.dumpException('exception during XMPP startup')
+        palala.utils.dumpException('exception during XMPP startup')
 
     log.info('processXMPP stop')
 
