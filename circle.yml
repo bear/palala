@@ -1,0 +1,13 @@
+machine:
+  services:
+    - redis
+  python:
+    version: 2.7.10
+
+dependencies:
+  override:
+    - make update-all
+
+test:
+  override:
+    - make ci
