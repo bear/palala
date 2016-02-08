@@ -1,10 +1,5 @@
 .PHONY: help clean info
 
-guard-%:
-	@ if [ "${${*}}" == "" ]; then \
-	  echo "Environment variable $* not set"; \
-	fi
-
 help:
 	@echo "This project assumes that an active Python virtualenv is present."
 	@echo "The following make targets are available:"
@@ -15,15 +10,15 @@ help:
 	@echo "  integration run integration tests"
 	@echo "  all         refresh and run all tests and generate coverage reports"
 
-update: guard-PYENV_VIRTUALENV_INIT
+update:
 	pip install -U pip
 	pip install -Ur requirements.txt
 
-update-all: guard-PYENV_VIRTUALENV_INIT update
-	pip install -Ur requirements-test.txt
-
-update-uwsgi: guard-PYENV_VIRTUALENV_INIT
+update-uwsgi: update
 	pip install -Ur requirements-uwsgi.txt
+
+update-all: update-uwsgi
+	pip install -Ur requirements-test.txt
 
 clean:
 	python manage.py clean
@@ -53,8 +48,8 @@ ci: info clean integration coverage
 
 all: update-all integration coverage
 
-server: guard-PYENV_VIRTUALENV_INIT update
+server:
 	python manage.py server
 
-uwsgi: update-uwsgi
+uwsgi:
 	uwsgi --socket 127.0.0.1:5080 --wsgi-file wsgi.py

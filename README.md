@@ -12,18 +12,24 @@ Currently I'm assuming an OS X environment as that is what I am using...
 ```
 brew tap homebrew/nginx
 brew install nginx-full --with-push-stream-module
+brew install uwsgi --with-python
 
 cd /path/to/your/palala
-# assumes PyEnv has activated the virtual env...
-# installs uwsgi via pip
-make update-uwsgi
+pyenv install 2.7.11
+pyenv virtualenv 2.7.11 palala
+make update-all
 ````
 
 Example Nginx config
 
 ```
-# With a homebrew installed nginx: /usr/local/etcc/nginx/servers/palala.conf
-# On a Debian/Ubuntu installed nginx: /etc/nginx/conf.d/palala.conf
+# palala.conf
+#
+# With a homebrew installed nginx:
+#     /usr/local/etcc/nginx/servers/
+#     ~/homebrew/etc/nginx/servers/
+# On a Debian/Ubuntu installed nginx:
+#     /etc/nginx/conf.d/
 # Currently assumes uwsgi config
 #
 # configuration items for http block
@@ -76,4 +82,13 @@ server {
     }
 
 }
+```
+
+Testing the nginx push stream module - this assumes that you have a `/etc/hosts` entry to make palala.org to 127.0.0.1
+
+```
+make uwsgi
+make server
+open http://palala.org:8080/en
+curl http://palala.org:8080/pub?id=push -d "Some Text"
 ```
