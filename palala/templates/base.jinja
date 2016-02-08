@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title }}</title>
+
+  <meta name="description" content="Palala - an IndieWeb river"/>
+  <meta name="author" content="bear"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <link rel="webmention"             href="/webmention"/>
+  <link rel="micropub"               href="/micropub"/>
+  <link rel="token_endpoint"         href="/token"/>
+  <link rel="authorization_endpoint" href="https://indieauth.com/auth"/>
+
+  <link href="https://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic|Open+Sans:400italic,600italic,400,600"
+        rel="stylesheet" type="text/css"/>
+  <link href="/css/palala.css"
+        rel="stylesheet" type="text/css"/>
+</head>
+<body>
+  <header class="page-header">
+    <div class="navigation">
+      <ul class="nav-items">
+        <li><a href="/">Palala</a></li>
+        <li><a href="/submit">Submit</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <div class="page-content">
+{% block content %}{% endblock %}
+  </div>
+  <hr/>
+  <footer>
+    <div>
+      <p class="credits">&copy; 2016 by <a href="http://bear.im">Bear</a>.
+        Palala is part of <a href="http://indiewebcamp.com/">IndieWebCamp</a>.
+      </p><p>
+        Palala is <a href="https://github.com/bear/palala">open source</a>.
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

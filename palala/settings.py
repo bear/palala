@@ -14,27 +14,27 @@ if os.path.exists(_owm_file):
         _owm_key = h.readline().strip()
 
 class Config(object):
-    SECRET_KEY   = "bar"
-    REDIS_URL    = "redis://127.0.0.1:6379/0"
-    CACHE_TYPE   = "null"
+    SECRET_KEY     = "bar"
+    REDIS_URL      = "redis://127.0.0.1:6379/0"
+    KEY_BASE       = ""
+    CLIENT_ID      = "https://palala.org"
+    AUTH_TIMEOUT   = 300
+    VOUCH_REQUIRED = False
+    CACHE_TYPE     = "null"
     CACHE_NO_NULL_WARNING = True
-    POSTALCODE   = "19021"
-    OWM_API      = _owm_key
-    KEY_BASE     = ""
 
 class ProdConfig(Config):
-    ENV = 'prod'
-    DEBUG = False
+    ENV        = 'prod'
+    DEBUG      = False
     CACHE_TYPE = 'redis'
 
 class DevConfig(Config):
-    ENV = 'dev'
+    ENV   = 'dev'
     DEBUG = True
     DEBUG_TB_INTERCEPT_REDIRECTS = False
-    OWM_API = _owm_key
 
 class TestConfig(Config):
-    ENV = 'test'
+    ENV   = 'test'
     DEBUG = True
     DEBUG_TB_INTERCEPT_REDIRECTS = False
     KEY_BASE = "test-"

@@ -22,6 +22,9 @@ update: guard-PYENV_VIRTUALENV_INIT
 update-all: guard-PYENV_VIRTUALENV_INIT update
 	pip install -Ur requirements-test.txt
 
+update-uwsgi: guard-PYENV_VIRTUALENV_INIT
+	pip install -Ur requirements-uwsgi.txt
+
 clean:
 	python manage.py clean
 
@@ -50,5 +53,8 @@ ci: info clean integration coverage
 
 all: update-all integration coverage
 
-server: guard-PYENV_VIRTUALENV_INIT
+server: guard-PYENV_VIRTUALENV_INIT update
 	python manage.py server
+
+uwsgi: update-uwsgi
+	uwsgi --socket 127.0.0.1:5080 --wsgi-file wsgi.py

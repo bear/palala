@@ -9,7 +9,11 @@ from flask.ext.redis import FlaskRedis
 from redis import StrictRedis
 
 from palala.controllers.main import main
-from palala.web import Palala
+from palala.controllers.river import river
+from palala.controllers.api import api
+from palala.controllers.webmention import wm
+from palala.controllers.micropub import mp
+from palala.app import Palala
 from palala.extensions import (
     debug_toolbar,
     cache
@@ -36,9 +40,13 @@ def create_app(object_name):
     debug_toolbar.init_app(app)
 
     app.dbRedis = FlaskRedis.from_custom_provider(StrictRedis, app)
-    app.palala = Palala(app.config['OWM_API'], app.config['KEY_BASE'], app.dbRedis)
+    app.palala  = Palala(app.config['KEY_BASE'])
 
     # register our blueprints
     app.register_blueprint(main)
+    app.register_blueprint(river)
+    app.register_blueprint(api)
+    app.register_blueprint(wm)
+    app.register_blueprint(mp)
 
     return app
