@@ -1,0 +1,9 @@
+FROM bellkev/uwsgi-base:stable
+
+ADD . /opt/palala
+
+RUN cd /opt/palala; make update-all
+
+EXPOSE 8001
+
+CMD uwsgi --socket :8001 --chdir /opt/palala --module uwsgi-app --callable application

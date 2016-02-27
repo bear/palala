@@ -13,13 +13,8 @@ from flask.ext.script.commands import Command, ShowUrls, Clean
 
 from palala import create_app
 
-def test(integration=False):
-    test_args = ['--strict', '--verbose', '--tb=long', 'tests']
-    if integration:
-        test_args.append('-kintegration')
-    else:
-        test_args.append('-k-integration')
-
+def test(marker="not web and not integration"):
+    test_args = ['--strict', '--verbose', '--tb=long', 'tests', '-m', marker]
     import pytest
     errno = pytest.main(test_args)
     sys.exit(errno)
@@ -32,7 +27,12 @@ class Test(Command):
 class Integration(Command):
     def run(self):
         self.test_suite = True
-        test(integration=True)
+        test(marker="integration")
+
+class WebTests(Command):
+    def run(self):
+        self.test_suite = True
+        test(marker="web")
 
 # default to dev config because no one should use this in
 # production anyway

@@ -1,0 +1,20 @@
+palala:
+  build: .
+  dockerfile: docker-palala
+palala-web:
+  build: .
+  dockerfile: docker-nginx
+  links:
+    - palala
+  expose:
+    - 8000
+  ports:
+    - "8000:8000"
+chromedriver:
+  image: robcherry/docker-chromedriver:latest
+  links:
+    - palala-web
+  ports:
+    - "4444:4444"
+  environment:
+    CHROMEDRIVER_WHITELISTED_IPS: ""

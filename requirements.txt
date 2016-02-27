@@ -1,6 +1,6 @@
 bearlib>=0.9
 ninka>=0.3.3
-ronkyuu>=0.3.2
+ronkyuu>=0.3.4
 pytz>=2015.7
 requests>=2.9.1
 mf2py>=1.0.1

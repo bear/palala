@@ -1,4 +1,4 @@
-.PHONY: help clean info
+.PHONY: help clean lint info server uwsgi
 
 help:
 	@echo "This project assumes that an active Python virtualenv is present."
@@ -14,27 +14,46 @@ update:
 	pip install -U pip
 	pip install -Ur requirements.txt
 
-update-uwsgi: update
-	pip install -Ur requirements-uwsgi.txt
-
-update-all: update-uwsgi
+update-all: update
+	pip install uwsgi
 	pip install -Ur requirements-test.txt
 
+install-hook:
+	git-pre-commit-hook install --force --plugins json --plugins yaml --plugins flake8 \
+                              --flake8_ignore E111,E124,E126,E201,E202,E221,E241,E302,E501,N802,N803
+
+docker-build: update-all docker-stop
+	docker-compose build
+	docker-compose pull
+	docker-compose rm -f
+
+docker-start: docker-build
+	docker-compose up -d
+
+docker-stop:
+	docker-compose stop
+
 clean:
+	@rm -f violations.flake8.txt
 	python manage.py clean
 
-lint: clean
-	flake8 --exclude=env . > violations.flake8.txt
+lint:
+	@rm -f violations.flake8.txt
+	flake8 --exclude=env --exclude=archive . > violations.flake8.txt
 
-# FIXME right now integration tests are run
 test: lint
 	python manage.py test
 
 integration: lint
 	python manage.py integration
 
+webtest: docker-start
+	$(eval DRIVER_IP := $(shell ./wait_for_ip.sh))
+	DRIVER_IP=$(DRIVER_IP) python manage.py webtest
+	docker-compose stop
+
 coverage: lint
-	@coverage run --source=tenki manage.py test
+	@coverage run --source=palala manage.py test
 	@coverage html
 	@coverage report
 
@@ -42,14 +61,15 @@ info:
 	@python --version
 	@pip --version
 	@virtualenv --version
+	@uname -a
 
-ci: info clean integration coverage
+ci: info clean integration coverage webtest
 	CODECOV_TOKEN=`cat .codecov-token` codecov
 
-all: update-all integration coverage
+all: integration coverage
 
 server:
 	python manage.py server
 
 uwsgi:
-	uwsgi --socket 127.0.0.1:5080 --wsgi-file wsgi.py
+	uwsgi --socket 127.0.0.1:5080 --wsgi-file uwsgi-app.py
