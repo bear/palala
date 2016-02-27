@@ -14,7 +14,6 @@ from bearlib.tools import baseDomain
 import pytz
 import ronkyuu
 
-
 def post(sourceURL, targetURL):
     """Post the sourceURL
 

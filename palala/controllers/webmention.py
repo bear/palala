@@ -16,7 +16,7 @@ def webmention():
     if request.method == 'POST':
         source = request.form.get('source')
         target = request.form.get('target')
-        vouch  = request.form.get('vouch')
+        # vouch  = request.form.get('vouch')
 
         current_app.logger.info('[%s] [%s]' % (source, target))
 
