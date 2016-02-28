@@ -1,5 +1,8 @@
 {% extends "base.jinja" %}
 {% block content %}
-<p>{{ g.post.postDate }}</p>
+
+<h2><a href="/posts/{{ g.post.post }}">{{ g.post.post }}</a></h2>
+<p>Added on {{ g.post.created }}</p>
+<p>Original URL {{ g.post.sourceURL }}</p>
 
 {% endblock content %}

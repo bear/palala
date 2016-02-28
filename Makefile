@@ -72,4 +72,4 @@ server:
 	python manage.py server
 
 uwsgi:
-	uwsgi --socket 127.0.0.1:5080 --wsgi-file uwsgi-app.py
+	uwsgi --socket 127.0.0.1:5080 --module uwsgi-app --callable application

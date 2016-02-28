@@ -1,0 +1,13 @@
+{% extends "base.jinja" %}
+{% block content %}
+
+<h2>Publish in our stream<h2>
+
+<form method="post" action="/publish">
+  <label for="publish-source">Publish URL</label>
+  <input type="url" name="source" placeholder="http://example.com/post" id="publish-source" required />
+  <input type="hidden" name="target" value="/publish" />
+  <p><button type="submit">Publish</button></p>
+</form>
+
+{% endblock content %}

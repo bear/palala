@@ -11,7 +11,7 @@ from redis import StrictRedis
 from palala.controllers.main import main
 from palala.controllers.river import river
 from palala.controllers.api import api
-from palala.controllers.webmention import wm
+from palala.controllers.publish import pub
 from palala.controllers.micropub import mp
 from palala.app import Palala
 from palala.extensions import (
@@ -46,7 +46,7 @@ def create_app(object_name):
     app.register_blueprint(main)
     app.register_blueprint(river)
     app.register_blueprint(api)
-    app.register_blueprint(wm)
+    app.register_blueprint(pub)
     app.register_blueprint(mp)
 
     return app
