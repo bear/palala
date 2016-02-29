@@ -6,7 +6,7 @@
 <p>Currently storing {{ g.domain.postCount }} post(s)</p>
 <ul>
 {% for post in g.domain.posts %}
-<li><a href="/posts/{{ post }}">{{ post }}</li>
+<li><a href="/posts/{{ post.domain }}/{{ post.postid }}">{{ post.source }}</li>
 {% endfor %}
 </ul>
 

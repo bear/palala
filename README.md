@@ -84,6 +84,12 @@ server {
 }
 ```
 
+Testing the webmention handler - this assumes that you have a `/etc/hosts` entry to make palala.org to 127.0.0.1
+
+```
+./sm.py http://webmention.tools/test1.html
+```
+
 Testing the nginx push stream module - this assumes that you have a `/etc/hosts` entry to make palala.org to 127.0.0.1
 
 ```

@@ -7,13 +7,14 @@
 from flask import Flask
 from flask.ext.redis import FlaskRedis
 from redis import StrictRedis
+import sqlite3
 
 from palala.controllers.main import main
 from palala.controllers.river import river
 from palala.controllers.api import api
 from palala.controllers.publish import pub
 from palala.controllers.micropub import mp
-from palala.app import Palala
+from palala.app import IndieNews
 from palala.extensions import (
     debug_toolbar,
     cache
@@ -40,7 +41,11 @@ def create_app(object_name):
     debug_toolbar.init_app(app)
 
     app.dbRedis = FlaskRedis.from_custom_provider(StrictRedis, app)
-    app.palala  = Palala(app.config['KEY_BASE'])
+    app.dbStore = sqlite3.connect(app.config['STORE_DB'])
+
+    app.dbStore.row_factory = sqlite3.Row
+
+    app.palala = IndieNews(app.config['KEY_BASE'])
 
     # register our blueprints
     app.register_blueprint(main)

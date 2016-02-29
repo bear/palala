@@ -9,7 +9,7 @@ import os
 
 from palala import create_app
 
-env = os.environ.get('PALALA_ENV', 'dev')
+env = os.environ.get('INDIENEWS_ENV', 'dev')
 application = create_app('palala.settings.%sConfig' % env.capitalize())
 
 if __name__ == "__main__":

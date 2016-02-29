@@ -4,7 +4,7 @@
 :license: CC0 1.0 Universal, see LICENSE for more details.
 """
 
-from flask import Blueprint, current_app, request, render_template
+from flask import Blueprint, current_app, request, jsonify, render_template
 from palala.publish import process
 from palala.mentions import mention
 
@@ -20,7 +20,15 @@ def publish():
 
         current_app.logger.info('publish [%s] [%s]' % (source, target))
 
-        return process(source, target)
+        r = process(source, target)
+        if r is None:
+            response             = jsonify({ "error": "publish URL cound not be found within target URL"})
+            response.status_code = 400
+        else:
+            response                     = jsonify(r)
+            response.status_code         = 201
+            response.headers['location'] = 'http://indieweb.news/posts/{domain}/{postid}'.format(**r)
+        return response
     else:
         return render_template('publish.jinja')
 
@@ -31,7 +39,7 @@ def webmention():
         target = request.form.get('target')
         # vouch  = request.form.get('vouch')
 
-        current_app.logger.info('webmention [%s] [%s]' % (source, target))
+        current_app.logger.info('webmention [{source}] [{target}]'.format(source=source, target=target))
 
         if '/publish' in target:
             return process(source, target)

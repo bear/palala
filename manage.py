@@ -36,7 +36,7 @@ class WebTests(Command):
 
 # default to dev config because no one should use this in
 # production anyway
-env = os.environ.get('PALALA_ENV', 'dev')
+env = os.environ.get('INDIENEWS_ENV', 'dev')
 app = create_app('palala.settings.%sConfig' % env.capitalize())
 
 manager = Manager(app)

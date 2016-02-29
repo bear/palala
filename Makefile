@@ -10,6 +10,9 @@ help:
 	@echo "  integration run integration tests"
 	@echo "  all         refresh and run all tests and generate coverage reports"
 
+db:
+	sqlite3 ./indienews.db < indienews.db.sql
+
 update:
 	pip install -U pip
 	pip install -Ur requirements.txt

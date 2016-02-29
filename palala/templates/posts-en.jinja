@@ -3,11 +3,11 @@
 <script type="text/javascript" src="/static/pushstream.js"></script>
 
 {% for item in g.posts %}
-<p>{{ item.created }} <a href="/posts/{{ item.post }}">{{ item.post }}</a></p>
+<p>{{ item.updated }} <a href="/posts/{{ item.domain }}/{{ item.postid }}">{{ item.source }}</a></p>
 {% endfor %}
 
 
-<div id="messages" style="width:800px;height:300px;overflow:scroll;"></div>
+<div id="messages" style="width:800px;height:300px;"></div>
 
     <script type="text/javascript" language="javascript" charset="utf-8">
     // <![CDATA[

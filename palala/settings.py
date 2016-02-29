@@ -6,18 +6,14 @@
 
 import os
 
-_owm_key  = ''
-_owm_file = os.path.expanduser('~/.openweathermap.key')
-
-if os.path.exists(_owm_file):
-    with open(_owm_file, 'r') as h:
-        _owm_key = h.readline().strip()
+_cwd = os.path.dirname(os.path.abspath(__file__))
 
 class Config(object):
     SECRET_KEY     = "bar"
     REDIS_URL      = "redis://127.0.0.1:6379/0"
+    STORE_DB       = os.path.join(_cwd, "..", "indienews.db")
     KEY_BASE       = ""
-    CLIENT_ID      = "https://palala.org"
+    CLIENT_ID      = "https://indieweb.news"
     AUTH_TIMEOUT   = 300
     VOUCH_REQUIRED = False
     CACHE_TYPE     = "null"
@@ -27,6 +23,8 @@ class ProdConfig(Config):
     ENV        = 'prod'
     DEBUG      = False
     CACHE_TYPE = 'redis'
+    REDIS_URL  = "redis://127.0.0.1:6379/4"
+    STORE_DB   = "/home/indienews/indienews.db"
 
 class DevConfig(Config):
     ENV   = 'dev'
